@@ -2,9 +2,12 @@
 
 package pgzgo
 
-// audioSupported is false in the browser: SDL3_mixer's js/wasm bindings are not
-// yet implemented, so games run silently rather than crash.
-func audioSupported() bool { return false }
+// audioSupported is true in the browser: SDL3_mixer, its OGG decoder and the
+// Web Audio backend are all in the Emscripten build, and go-sdl3-wasm now has
+// the js bindings for the mixer playback path. The AudioContext starts
+// suspended and SDL's Emscripten backend resumes it on the first user gesture
+// (the keypress that starts the game), so title music is silent until then.
+func audioSupported() bool { return true }
 
 // gamepadSupported is false in the browser: the SDL gamepad subsystem is not yet
 // wired up for js/wasm. Games fall back to keyboard input.
