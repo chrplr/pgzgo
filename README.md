@@ -213,6 +213,23 @@ not initialise a mixer — and manage your own alongside the harness Screen/Keyb
 Gamepad. `New` skips mixer setup entirely when `Config.Audio` is nil, so there is no
 conflict with a mixer you create yourself.
 
+## WebAssembly (browser)
+
+pgzgo also targets the browser (`GOOS=js GOARCH=wasm`). The wasm build needs the
+[go-sdl3-wasm](https://github.com/chrplr/go-sdl3-wasm) fork of go-sdl3, which supplies
+the js/wasm bindings, plus its `wasmsdl` bundler. A game redirects go-sdl3 to the fork
+for the browser build only (a `go mod edit -replace` that is never committed), so
+native `go build` / `go get` are unaffected.
+
+Graphics, keyboard and **audio** all work in the browser — SDL3_mixer plays through
+the Emscripten Web Audio backend (the same `Audio.Play` / `PlayMusic` API). Because of
+the browser autoplay policy the audio context starts suspended and resumes on the first
+user gesture (typically the keypress that starts the game), so title music is silent
+until then. Gamepad input is not wired up for wasm yet.
+
+The eight *Code the Classics* ports run this way — playable in-browser with sound; see
+their repositories for the GitHub Pages setup.
+
 ## License
 
 GNU GPL v3
