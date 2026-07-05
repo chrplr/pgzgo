@@ -3,7 +3,6 @@ package pgzgo
 import (
 	"io/fs"
 
-	"github.com/Zyko0/go-sdl3/img"
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
@@ -40,8 +39,10 @@ func (s *Screen) Texture(name string) *sdl.Texture {
 	return tex
 }
 
-// loadTextureFromFS decodes an embedded image into a texture via an in-memory
-// SDL IOStream, so no file is touched at run time.
+// loadTextureFromFS reads an embedded image and decodes it into a texture. The
+// bytes→texture step (decodeTexture) is platform-specific: native builds use
+// SDL_image, while the js/wasm build decodes with Go's image/png and uploads the
+// pixels directly, so it doesn't depend on the (still-stubbed) SDL_image bindings.
 func loadTextureFromFS(renderer *sdl.Renderer, fsys fs.FS, path string) *sdl.Texture {
 	if fsys == nil {
 		return nil
@@ -50,15 +51,7 @@ func loadTextureFromFS(renderer *sdl.Renderer, fsys fs.FS, path string) *sdl.Tex
 	if err != nil {
 		return nil
 	}
-	stream, err := sdl.IOFromConstMem(data)
-	if err != nil {
-		return nil
-	}
-	tex, err := img.LoadTextureIO(renderer, stream, true) // closeio: frees the stream
-	if err != nil {
-		return nil
-	}
-	return tex
+	return decodeTexture(renderer, data)
 }
 
 // LoadTexture decodes and caches a texture from an arbitrary filesystem, keyed by

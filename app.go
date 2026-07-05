@@ -137,6 +137,8 @@ func (a *App) Loop(update, draw func(*App)) {
 	sdl.RunLoop(func() error {
 		frameStart := sdl.Ticks()
 
+		a.Keyboard.beginFrame()
+
 		var event sdl.Event
 		for sdl.PollEvent(&event) {
 			if event.Type == sdl.EVENT_QUIT {
@@ -146,6 +148,7 @@ func (a *App) Loop(update, draw func(*App)) {
 				event.KeyboardEvent().Scancode == sdl.SCANCODE_ESCAPE {
 				return sdl.EndLoop
 			}
+			a.Keyboard.handleEvent(&event)
 			a.Gamepad.handleEvent(&event)
 		}
 
@@ -176,7 +179,7 @@ func (a *App) Loop(update, draw func(*App)) {
 		a.renderer.Present()
 
 		if elapsed := sdl.Ticks() - frameStart; elapsed < frameMillis {
-			sdl.Delay(uint32(frameMillis - elapsed))
+			frameSleep(frameMillis - elapsed)
 		}
 		return nil
 	})

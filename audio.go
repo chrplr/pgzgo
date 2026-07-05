@@ -28,7 +28,9 @@ func newAudio(fsys fs.FS) *Audio {
 		sounds: make(map[string]*mixer.Audio),
 		music:  make(map[string]*mixer.Track),
 	}
-	if fsys == nil {
+	if fsys == nil || !audioSupported() {
+		// audioSupported() is false on js/wasm, where SDL3_mixer's bindings are
+		// not yet implemented; the game then runs silently with a nil mixer.
 		return a
 	}
 	if err := mixer.Init(); err != nil {

@@ -32,6 +32,11 @@ func newGamepad() *Gamepad {
 		cur:  map[sdl.GamepadButton]bool{},
 		prev: map[sdl.GamepadButton]bool{},
 	}
+	if !gamepadSupported() {
+		// The SDL gamepad subsystem isn't wired up for js/wasm yet; leave the pad
+		// nil so every query returns neutral and the game uses the keyboard.
+		return g
+	}
 	if err := sdl.InitSubSystem(sdl.INIT_GAMEPAD); err != nil {
 		return g
 	}
