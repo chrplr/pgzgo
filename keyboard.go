@@ -3,26 +3,16 @@ package pgzgo
 import "github.com/Zyko0/go-sdl3/sdl"
 
 // Keyboard holds this frame's and the previous frame's keyboard snapshots, so it
-// can answer both "held" and "just pressed" (rising-edge) queries. App.Loop
-// refreshes it once per frame.
+// can answer both "held" and "just pressed" (rising-edge) queries.
+//
+// Two mechanisms feed it, chosen at build time. Native builds poll SDL's whole
+// keyboard state each frame (refresh, in keyboard_notjs.go). The browser build has
+// no SDL_GetKeyboardState binding, so it tracks state from key up/down events
+// instead (beginFrame + handleEvent, in keyboard_js.go). App.Loop calls all three
+// hooks every frame; the platform that doesn't use one implements it as a no-op.
 type Keyboard struct {
 	keys []bool
 	prev []bool
-}
-
-func (k *Keyboard) refresh() {
-	current := sdl.GetKeyboardState()
-	if current == nil {
-		return
-	}
-	if len(k.prev) != len(current) {
-		k.prev = make([]bool, len(current))
-	}
-	if len(k.keys) != len(current) {
-		k.keys = make([]bool, len(current))
-	}
-	copy(k.prev, k.keys)
-	copy(k.keys, current)
 }
 
 // Held reports whether the key with the given scancode is currently down.
