@@ -135,10 +135,18 @@ if *selftest {
 a.Loop(update, draw)
 ```
 
-Each frame `Loop` polls events, refreshes the keyboard and gamepad snapshots, clears
-the screen, then calls `update(app)` and `draw(app)`. It quits on the window close
-button, the gamepad **Start** button, `App.Quit()`, and (by default) the **Escape**
-key.
+Each iteration `Loop` polls events, refreshes the keyboard and gamepad snapshots,
+clears the screen, then calls `update(app)` and `draw(app)`. It quits on the window
+close button, the gamepad **Start** button, `App.Quit()`, and (by default) the
+**Escape** key.
+
+The game logic runs on a **fixed timestep**, decoupled from how often the loop
+iterates: a time accumulator advances `update` at a constant rate (the `FPS` step) and
+renders once per iteration. On native, `SDL_Delay` paces the loop, so this is one
+update per frame as before. In the browser, `requestAnimationFrame` drives the loop at
+the display's refresh rate — so before `v0.4.0`, games (which move a fixed amount per
+update, not scaled by elapsed time) ran too fast on 120/144 Hz monitors. The fixed
+timestep keeps them at the right speed on any refresh rate.
 
 ## Config
 
@@ -226,6 +234,10 @@ the Emscripten Web Audio backend (the same `Audio.Play` / `PlayMusic` API). Beca
 the browser autoplay policy the audio context starts suspended and resumes on the first
 user gesture (typically the keypress that starts the game), so title music is silent
 until then. Gamepad input is not wired up for wasm yet.
+
+Because the browser paces the loop with `requestAnimationFrame` at the monitor's
+refresh rate, the fixed-timestep loop (see [Lifecycle](#lifecycle-new--loop--close), `v0.4.0`) is
+what keeps games running at the intended speed on high-refresh (120/144 Hz) displays.
 
 The eight *Code the Classics* ports run this way — playable in-browser with sound; see
 their repositories for the GitHub Pages setup.
