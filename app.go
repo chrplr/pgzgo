@@ -127,15 +127,46 @@ func (a *App) Renderer() *sdl.Renderer { return a.renderer }
 func (a *App) Quit() { a.quit = true }
 
 // Loop runs the game loop until a quit is requested (window close, Escape when
-// enabled, the gamepad Start button, or App.Quit). Each frame it polls events,
-// refreshes the keyboard and gamepad snapshots, clears the screen, then calls
-// update and draw. update or draw may be nil.
+// enabled, the gamepad Start button, or App.Quit).
+//
+// The game logic advances at a fixed step, decoupled from how often this callback
+// fires. On native, frameSleep paces the callback to the step, so it runs exactly
+// one update per iteration (as it always has). In the browser, frameSleep is a
+// no-op and the callback is driven by requestAnimationFrame at the display's
+// refresh rate — which may be 120 Hz, 144 Hz, etc. Without decoupling, a game that
+// moves a fixed amount per update (as these ports do; none scale motion by Dt)
+// would run proportionally too fast on a high-refresh display. A time accumulator
+// fixes this: it runs however many fixed-step updates the elapsed wall-clock time
+// calls for (usually one, sometimes zero on a fast display, rarely more if a frame
+// stalled), so the logic rate stays constant on every monitor.
+//
+// The fixed step is the integer frameMillis, so the average logic rate matches the
+// long-standing native rate exactly (e.g. 60 FPS truncates to 16 ms => ~62.5 Hz).
 func (a *App) Loop(update, draw func(*App)) {
 	frameMillis := uint64(1000 / a.fps)
+	step := float64(frameMillis) // fixed logic step, in milliseconds
+	const maxCatchUp = 5         // cap updates per callback to avoid a spiral of death
+
 	last := sdl.Ticks()
+	var accumulator float64 // unspent wall-clock time, in milliseconds
 
 	sdl.RunLoop(func() error {
 		frameStart := sdl.Ticks()
+
+		elapsed := float64(frameStart - last)
+		last = frameStart
+		if elapsed > maxCatchUp*step { // clamp so a stalled frame can't spiral
+			elapsed = maxCatchUp * step
+		}
+		accumulator += elapsed
+
+		// Nothing is due yet (a callback arrived sooner than the fixed step, e.g.
+		// a high-refresh display). Skip input, update and draw entirely — polling
+		// input now would roll a key press into "prev" before any update saw it,
+		// dropping the rising edge that Keyboard.Pressed reports.
+		if accumulator < step {
+			return nil
+		}
 
 		a.Keyboard.beginFrame()
 
@@ -152,30 +183,26 @@ func (a *App) Loop(update, draw func(*App)) {
 			a.Gamepad.handleEvent(&event)
 		}
 
-		now := sdl.Ticks()
-		a.Dt = float64(now-last) / 1000.0
-		last = now
-		if a.Dt > 0.1 { // clamp so a stalled frame can't jump the physics
-			a.Dt = 0.1
-		}
-
 		a.Keyboard.refresh()
 		a.Gamepad.refresh()
 		if a.Gamepad.StartPressed() || a.quit {
 			return sdl.EndLoop
 		}
 
+		a.Dt = step / 1000.0
+		for i := 0; accumulator >= step && i < maxCatchUp; i++ {
+			accumulator -= step
+			a.Frame++
+			if update != nil {
+				update(a)
+			}
+		}
+
 		a.renderer.SetDrawColor(0, 0, 0, 255)
 		a.renderer.Clear()
-
-		a.Frame++
-		if update != nil {
-			update(a)
-		}
 		if draw != nil {
 			draw(a)
 		}
-
 		a.renderer.Present()
 
 		if elapsed := sdl.Ticks() - frameStart; elapsed < frameMillis {

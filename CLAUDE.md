@@ -44,6 +44,11 @@ silent until then.
 
 - `v0.2.0` — added the js/wasm target.
 - `v0.3.0` — enabled audio on js/wasm (needs the fork's mixer bindings at build
-  time). Tag a new version after changes; games pin an exact `pgzgo` version.
+  time).
+- `v0.4.0` — fixed-timestep game loop: logic now advances at a fixed step via a
+  time accumulator, decoupled from the callback rate, so js/wasm no longer runs
+  too fast on high-refresh (120/144 Hz) displays where rAF outpaces 60 FPS. The
+  native rate is unchanged. Tag a new version after changes; games pin an exact
+  `pgzgo` version.
 
 See [[TODO.md]] for the outstanding fork-upstreaming item.
